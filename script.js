@@ -178,8 +178,12 @@ function generarPDF(titulo) {
         const nombreArchivo = titulo.toLowerCase().replace(/ /g, '_') + '.pdf';
         doc.save(nombreArchivo);
         
+        // Limpiar la lista de registros
+        registros = [];
+        actualizarListaRegistros();
+        
         // Notificación de éxito
-        toastr.success('El archivo PDF ha sido generado correctamente', 'Exportación Exitosa');
+        toastr.success('El archivo PDF ha sido generado y los registros han sido limpiados', 'Exportación Exitosa');
     } catch (error) {
         console.error('Error al exportar PDF:', error);
         toastr.error('Hubo un error al exportar el archivo', 'Error');
