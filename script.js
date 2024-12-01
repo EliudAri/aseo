@@ -22,7 +22,7 @@ function agregarPersona() {
             apellido, 
             area, 
             fecha, 
-            hora: hora || 'No especificada'
+            hora: hora ? formatearHora(hora) : 'No especificada'
         };
         registros.push(registro);
         actualizarListaRegistros();
@@ -112,31 +112,12 @@ function exportarExcel() {
 
 let pdfTitleModal = null;
 
-// Agregar dentro del DOMContentLoaded existente
+// Agregar en el DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
-    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-
-    // Agregar el event listener para el botón de confirmar eliminación
-    document.getElementById('confirmDelete').addEventListener('click', function() {
-        if (deleteIndex !== null) {
-            const registro = registros[deleteIndex];
-            registros.splice(deleteIndex, 1);
-            actualizarListaRegistros();
-            
-            // Notificación de eliminación
-            toastr.warning(`${registro.nombre} ${registro.apellido} ha sido eliminado`, 'Registro Eliminado');
-            
-            // Cerrar el modal
-            deleteModal.hide();
-            deleteIndex = null;
-        }
-    });
-    
-    // Inicializar el modal de título PDF
     pdfTitleModal = new bootstrap.Modal(document.getElementById('pdfTitleModal'));
     
-    // Event listener para el botón de exportar PDF
-    document.getElementById('confirmPdfExport').addEventListener('click', function() {
+    // Agregar listener para el botón de confirmar título del PDF
+    document.getElementById('confirmPdfTitle').addEventListener('click', function() {
         const titulo = document.getElementById('pdfTitle').value.trim() || 'Registro de Personal';
         generarPDF(titulo);
         pdfTitleModal.hide();
@@ -170,7 +151,7 @@ function generarPDF(titulo) {
         doc.setFontSize(16);
         doc.setTextColor(52, 71, 103);
         doc.setFont('helvetica', 'bold');
-        doc.text(titulo || 'Registro de Personal', 14, 15);
+        doc.text(titulo, 14, 15);
 
         // Agregar fecha de generación
         doc.setFontSize(10);
@@ -347,7 +328,8 @@ function editarRegistro(index) {
     document.getElementById('apellido').value = registro.apellido;
     document.getElementById('area').value = registro.area;
     document.getElementById('fecha').value = registro.fecha;
-    document.getElementById('hora').value = registro.hora !== 'No especificada' ? registro.hora : '';
+    document.getElementById('hora').value = registro.hora !== 'No especificada' ? 
+        convertirA24Horas(registro.hora) : '';
     
     // Eliminar el registro actual
     registros.splice(index, 1);
@@ -424,3 +406,137 @@ document.head.insertAdjacentHTML('beforeend', `
         }
     </style>
 `);
+
+// Configurar PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+async function importarPDF(file) {
+    if (!file) {
+        toastr.error('No se seleccionó ningún archivo', 'Error');
+        return;
+    }
+
+    try {
+        toastr.info('Procesando archivo PDF...', 'Importando');
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        const page = await pdf.getPage(1);
+        const textContent = await page.getTextContent();
+        
+        // Extraer y ordenar los items por posición
+        const items = textContent.items;
+        console.log('Contenido extraído:', items); // Debug
+
+        // Ordenar por posición vertical (Y) y luego horizontal (X)
+        const sortedItems = items.sort((a, b) => {
+            const yDiff = b.transform[5] - a.transform[5];
+            return yDiff !== 0 ? yDiff : a.transform[4] - b.transform[4];
+        });
+
+        // Obtener solo el texto
+        const textItems = sortedItems.map(item => item.str.trim()).filter(text => text !== '');
+        console.log('Texto ordenado:', textItems); // Debug
+
+        // Encontrar el índice donde comienzan los datos (después de los encabezados)
+        const startIndex = textItems.findIndex(text => 
+            text.includes('Nombre') || text.includes('Apellido') || text.includes('Área')
+        );
+
+        // Obtener solo los datos (sin encabezados ni metadata)
+        const dataItems = textItems.slice(startIndex + 5); // +5 para saltar los encabezados
+        console.log('Datos filtrados:', dataItems); // Debug
+
+        // Agrupar en registros
+        const nuevosRegistros = [];
+        for (let i = 0; i < dataItems.length; i += 5) {
+            const registro = {
+                nombre: dataItems[i],
+                apellido: dataItems[i + 1],
+                area: dataItems[i + 2],
+                fecha: dataItems[i + 3],
+                hora: formatearHora(dataItems[i + 4]) || 'No especificada'
+            };
+
+            // Verificar que el registro sea válido
+            if (registro.nombre && registro.apellido && registro.area && registro.fecha) {
+                nuevosRegistros.push(registro);
+            }
+        }
+
+        console.log('Registros encontrados:', nuevosRegistros); // Debug
+
+        if (nuevosRegistros.length > 0) {
+            const modal = new bootstrap.Modal(document.getElementById('importModal'));
+            document.getElementById('importModalBody').innerHTML = 
+                `Se encontraron ${nuevosRegistros.length} registros. ¿Cómo desea importarlos?`;
+            
+            document.getElementById('btnAgregarRegistros').onclick = function() {
+                registros.push(...nuevosRegistros);
+                actualizarListaRegistros();
+                modal.hide();
+                toastr.success(`Se agregaron ${nuevosRegistros.length} registros`, 'Importación Exitosa');
+            };
+            
+            document.getElementById('btnReemplazarRegistros').onclick = function() {
+                registros = [...nuevosRegistros];
+                actualizarListaRegistros();
+                modal.hide();
+                toastr.success('Se reemplazaron todos los registros', 'Importación Exitosa');
+            };
+            
+            modal.show();
+        } else {
+            toastr.error('No se encontraron registros en el PDF', 'Error');
+        }
+    } catch (error) {
+        console.error('Error al importar:', error);
+        toastr.error('Error al procesar el archivo PDF. Revise la consola para más detalles.', 'Error');
+    }
+
+    document.getElementById('pdfInput').value = '';
+}
+
+// Función para convertir hora de 24 a 12 horas con AM/PM
+function formatearHora(hora) {
+    if (!hora || hora === 'No especificada') return 'No especificada';
+    
+    try {
+        // Si ya tiene AM/PM, retornarla sin modificar
+        if (hora.includes('AM') || hora.includes('PM')) {
+            return hora;
+        }
+
+        const [hours, minutes] = hora.split(':');
+        let hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12;
+        hour = hour ? hour : 12; // Si es 0, convertir a 12
+        return `${hour}:${minutes} ${ampm}`;
+    } catch (error) {
+        return hora;
+    }
+}
+
+// Función para convertir hora de 12 a 24 horas
+function convertirA24Horas(hora) {
+    if (!hora || hora === 'No especificada') return 'No especificada';
+    
+    try {
+        // Si no tiene AM/PM, asumimos que ya está en formato 24 horas
+        if (!hora.includes('AM') && !hora.includes('PM')) {
+            return hora;
+        }
+
+        const [time, period] = hora.split(' ');
+        const [hours, minutes] = time.split(':');
+        let hour = parseInt(hours);
+        
+        if (period === 'PM' && hour !== 12) hour += 12;
+        if (period === 'AM' && hour === 12) hour = 0;
+        
+        return `${hour.toString().padStart(2, '0')}:${minutes}`;
+    } catch (error) {
+        return hora;
+    }
+}
