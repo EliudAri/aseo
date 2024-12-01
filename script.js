@@ -1,5 +1,14 @@
 let registros = [];
 
+// Configuración global de Toastr
+toastr.options = {
+    "closeButton": true,
+    "progressBar": true,
+    "positionClass": "toast-top-right",
+    "preventDuplicates": true,
+    "timeOut": "3000"
+};
+
 function agregarPersona() {
     const nombre = document.getElementById('nombre').value;
     const apellido = document.getElementById('apellido').value;
@@ -7,13 +16,23 @@ function agregarPersona() {
     const fecha = document.getElementById('fecha').value;
     const hora = document.getElementById('hora').value;
 
-    if (nombre && apellido && area && fecha && hora) {
-        const registro = { nombre, apellido, area, fecha, hora };
+    if (nombre && apellido && area && fecha) {
+        const registro = { 
+            nombre, 
+            apellido, 
+            area, 
+            fecha, 
+            hora: hora || 'No especificada'
+        };
         registros.push(registro);
         actualizarListaRegistros();
         document.getElementById('registroForm').reset();
+        
+        // Notificación de éxito
+        toastr.success(`${nombre} ${apellido} ha sido registrado correctamente`, 'Registro Exitoso');
     } else {
-        alert('Por favor, complete todos los campos');
+        // Notificación de error
+        toastr.error('Por favor, complete los campos obligatorios (Nombre, Apellido, Área y Fecha)', 'Error');
     }
 }
 
@@ -23,12 +42,22 @@ function actualizarListaRegistros() {
     
     registros.forEach((registro, index) => {
         const item = document.createElement('div');
-        item.className = 'list-group-item';
+        item.className = 'list-group-item d-flex justify-content-between align-items-start';
         item.innerHTML = `
-            <h5>${registro.nombre} ${registro.apellido}</h5>
-            <p>Área: ${registro.area}<br>
-            Fecha: ${registro.fecha}<br>
-            Hora: ${registro.hora}</p>
+            <div class="ms-2 me-auto">
+                <h5>${registro.nombre} ${registro.apellido}</h5>
+                <p class="mb-0">Área: ${registro.area}<br>
+                Fecha: ${registro.fecha}<br>
+                Hora: ${registro.hora}</p>
+            </div>
+            <div class="btn-group-vertical gap-2">
+                <button class="btn btn-sm btn-outline-primary" onclick="editarRegistro(${index})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarRegistro(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
         `;
         listaRegistros.appendChild(item);
     });
@@ -38,7 +67,7 @@ function actualizarListaRegistros() {
 
 function exportarExcel() {
     if (registros.length === 0) {
-        alert('No hay registros para exportar');
+        toastr.error('No hay registros para exportar', 'Error');
         return;
     }
 
@@ -72,15 +101,18 @@ function exportarExcel() {
 
         // Generar el archivo y descargarlo
         XLSX.writeFile(wb, "registros_personal.xlsx");
+        
+        // Notificación de éxito
+        toastr.success('El archivo Excel ha sido generado correctamente', 'Exportación Exitosa');
     } catch (error) {
         console.error('Error al exportar:', error);
-        alert('Hubo un error al exportar el archivo. Por favor, intente nuevamente.');
+        toastr.error('Hubo un error al exportar el archivo', 'Error');
     }
 }
 
 function exportarPDF() {
     if (registros.length === 0) {
-        alert('No hay registros para exportar');
+        toastr.error('No hay registros para exportar', 'Error');
         return;
     }
 
@@ -174,9 +206,12 @@ function exportarPDF() {
 
         // Descargar el PDF
         doc.save('registros_personal.pdf');
+        
+        // Notificación de éxito
+        toastr.success('El archivo PDF ha sido generado correctamente', 'Exportación Exitosa');
     } catch (error) {
         console.error('Error al exportar PDF:', error);
-        alert('Hubo un error al exportar el PDF. Por favor, intente nuevamente.');
+        toastr.error('Hubo un error al exportar el archivo', 'Error');
     }
 }
 
@@ -229,3 +264,173 @@ function verificarXLSX() {
 
 // Llamar a la función de verificación cuando se carga la página
 document.addEventListener('DOMContentLoaded', verificarXLSX);
+
+// Variable global para almacenar el índice del registro a eliminar
+let deleteIndex = null;
+let deleteModal = null;
+
+// Inicializar el modal cuando el documento esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+    // Agregar el event listener para el botón de confirmar eliminación
+    document.getElementById('confirmDelete').addEventListener('click', function() {
+        if (deleteIndex !== null) {
+            const registro = registros[deleteIndex];
+            registros.splice(deleteIndex, 1);
+            actualizarListaRegistros();
+            
+            // Notificación de eliminación
+            toastr.warning(`${registro.nombre} ${registro.apellido} ha sido eliminado`, 'Registro Eliminado');
+            
+            // Cerrar el modal
+            deleteModal.hide();
+            deleteIndex = null;
+        }
+    });
+});
+
+function eliminarRegistro(index) {
+    const registro = registros[index];
+    deleteIndex = index;
+    
+    // Actualizar el contenido del modal
+    document.getElementById('deleteModalBody').innerHTML = 
+        `¿Está seguro que desea eliminar el registro de <strong>${registro.nombre} ${registro.apellido}</strong>?`;
+    
+    // Mostrar el modal
+    deleteModal.show();
+}
+
+// Agregar estilos adicionales para el modal
+document.head.insertAdjacentHTML('beforeend', `
+    <style>
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-header {
+            padding: 1.5rem 1.5rem 1rem;
+        }
+        
+        .modal-body {
+            padding: 1rem 1.5rem;
+        }
+        
+        .modal-footer {
+            padding: 1rem 1.5rem 1.5rem;
+        }
+        
+        .modal-title {
+            color: #344767;
+            font-weight: 600;
+        }
+        
+        .modal .btn {
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+        }
+        
+        .modal .btn-secondary {
+            background-color: #8898aa;
+            border: none;
+        }
+        
+        .modal .btn-danger {
+            background-color: #f5365c;
+            border: none;
+        }
+        
+        .modal .btn-close:focus {
+            box-shadow: none;
+        }
+    </style>
+`);
+
+function editarRegistro(index) {
+    const registro = registros[index];
+    
+    // Llenar el formulario con los datos del registro
+    document.getElementById('nombre').value = registro.nombre;
+    document.getElementById('apellido').value = registro.apellido;
+    document.getElementById('area').value = registro.area;
+    document.getElementById('fecha').value = registro.fecha;
+    document.getElementById('hora').value = registro.hora !== 'No especificada' ? registro.hora : '';
+    
+    // Eliminar el registro actual
+    registros.splice(index, 1);
+    actualizarListaRegistros();
+    
+    // Notificación de edición
+    toastr.info(`Editando registro de ${registro.nombre} ${registro.apellido}`, 'Modo Edición');
+}
+
+// Agregar estilos para los botones
+document.head.insertAdjacentHTML('beforeend', `
+    <style>
+        .btn-group-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .btn-outline-primary {
+            color: #5e72e4;
+            border-color: #5e72e4;
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: #5e72e4;
+            color: white;
+        }
+        
+        .btn-outline-danger {
+            color: #f5365c;
+            border-color: #f5365c;
+        }
+        
+        .btn-outline-danger:hover {
+            background-color: #f5365c;
+            color: white;
+        }
+        
+        .list-group-item {
+            position: relative;
+        }
+        
+        .btn-group-vertical .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+    </style>
+`);
+
+// Estilos adicionales para las notificaciones
+document.head.insertAdjacentHTML('beforeend', `
+    <style>
+        .toast-success {
+            background-color: #2dce89 !important;
+        }
+        
+        .toast-error {
+            background-color: #f5365c !important;
+        }
+        
+        .toast-info {
+            background-color: #11cdef !important;
+        }
+        
+        .toast-warning {
+            background-color: #fb6340 !important;
+        }
+        
+        #toast-container > div {
+            opacity: 1;
+            border-radius: 10px;
+            padding: 15px 15px 15px 50px;
+            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+`);
