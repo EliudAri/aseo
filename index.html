@@ -24,6 +24,7 @@
         pdfjsLib = window['pdfjs-dist/build/pdf'];
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <div class="container py-4">
@@ -69,16 +70,11 @@
                                     </button>
                                 </div>
                                 <div class="col-md-6">
-                                    <button type="button" class="btn btn-info w-100" onclick="exportarExcel()">
-                                        <i class="fas fa-file-excel"></i> Exportar Excel
-                                    </button>
-                                </div>
-                                <div class="col-md-6">
                                     <button type="button" class="btn btn-danger w-100" onclick="exportarPDF()">
                                         <i class="fas fa-file-pdf"></i> Exportar PDF
                                     </button>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <button type="button" class="btn btn-secondary w-100" onclick="document.getElementById('pdfInput').click()">
                                         <i class="fas fa-file-import"></i> Importar PDF
                                     </button>
@@ -138,7 +134,7 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label for="pdfTitle" class="form-label">Ingrese el título para el documento:</label>
-                        <input type="text" class="form-control" id="pdfTitle" placeholder="Registro de Personal">
+                        <input type="text" class="form-control" id="pdfTitle" placeholder="Nombra el archivo">
                     </div>
                 </div>
                 <div class="modal-footer border-0">

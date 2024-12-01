@@ -65,66 +65,6 @@ function actualizarListaRegistros() {
 
 // También puedes eliminar la función enviarRegistros() ya que no se usará más
 
-function exportarExcel() {
-    if (registros.length === 0) {
-        toastr.error('No hay registros para exportar', 'Error');
-        return;
-    }
-
-    try {
-        // Preparar los datos
-        const data = registros.map(registro => ({
-            'NOMBRE': registro.nombre,
-            'APELLIDO': registro.apellido,
-            'ÁREA': registro.area,
-            'FECHA': registro.fecha,
-            'HORA': registro.hora
-        }));
-
-        // Crear una hoja de trabajo
-        const ws = XLSX.utils.json_to_sheet(data);
-        
-        // Definir el ancho de las columnas
-        ws['!cols'] = [
-            { wch: 15 }, // Nombre
-            { wch: 15 }, // Apellido
-            { wch: 20 }, // Área
-            { wch: 12 }, // Fecha
-            { wch: 10 }  // Hora
-        ];
-
-        // Crear un libro de trabajo
-        const wb = XLSX.utils.book_new();
-        
-        // Agregar la hoja al libro
-        XLSX.utils.book_append_sheet(wb, ws, "Registros");
-
-        // Generar el archivo y descargarlo
-        XLSX.writeFile(wb, "registros_personal.xlsx");
-        
-        // Notificación de éxito
-        toastr.success('El archivo Excel ha sido generado correctamente', 'Exportación Exitosa');
-    } catch (error) {
-        console.error('Error al exportar:', error);
-        toastr.error('Hubo un error al exportar el archivo', 'Error');
-    }
-}
-
-let pdfTitleModal = null;
-
-// Agregar en el DOMContentLoaded
-document.addEventListener('DOMContentLoaded', function() {
-    pdfTitleModal = new bootstrap.Modal(document.getElementById('pdfTitleModal'));
-    
-    // Agregar listener para el botón de confirmar título del PDF
-    document.getElementById('confirmPdfTitle').addEventListener('click', function() {
-        const titulo = document.getElementById('pdfTitle').value.trim() || 'Registro de Personal';
-        generarPDF(titulo);
-        pdfTitleModal.hide();
-        document.getElementById('pdfTitle').value = ''; // Limpiar el input
-    });
-});
-
 function exportarPDF() {
     if (registros.length === 0) {
         toastr.error('No hay registros para exportar', 'Error');
@@ -544,3 +484,4 @@ function convertirA24Horas(hora) {
         return hora;
     }
 }
+
