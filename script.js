@@ -110,14 +110,50 @@ function exportarExcel() {
     }
 }
 
+let pdfTitleModal = null;
+
+// Agregar dentro del DOMContentLoaded existente
+document.addEventListener('DOMContentLoaded', function() {
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+    // Agregar el event listener para el botón de confirmar eliminación
+    document.getElementById('confirmDelete').addEventListener('click', function() {
+        if (deleteIndex !== null) {
+            const registro = registros[deleteIndex];
+            registros.splice(deleteIndex, 1);
+            actualizarListaRegistros();
+            
+            // Notificación de eliminación
+            toastr.warning(`${registro.nombre} ${registro.apellido} ha sido eliminado`, 'Registro Eliminado');
+            
+            // Cerrar el modal
+            deleteModal.hide();
+            deleteIndex = null;
+        }
+    });
+    
+    // Inicializar el modal de título PDF
+    pdfTitleModal = new bootstrap.Modal(document.getElementById('pdfTitleModal'));
+    
+    // Event listener para el botón de exportar PDF
+    document.getElementById('confirmPdfExport').addEventListener('click', function() {
+        const titulo = document.getElementById('pdfTitle').value.trim() || 'Registro de Personal';
+        generarPDF(titulo);
+        pdfTitleModal.hide();
+        document.getElementById('pdfTitle').value = ''; // Limpiar el input
+    });
+});
+
 function exportarPDF() {
     if (registros.length === 0) {
         toastr.error('No hay registros para exportar', 'Error');
         return;
     }
+    pdfTitleModal.show();
+}
 
+function generarPDF(titulo) {
     try {
-        // Crear nuevo PDF
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
@@ -130,56 +166,11 @@ function exportarPDF() {
             registro.hora
         ]);
 
-        // Configuración de estilos para la tabla
-        const styles = {
-            font: 'helvetica',
-            fontStyle: 'normal',
-            fontSize: 10,
-            cellPadding: 5,
-            lineColor: [233, 236, 239], // Color de líneas suave
-            lineWidth: 0.5,
-        };
-
-        // Configuración de los encabezados
-        const headers = [['NOMBRE', 'APELLIDO', 'ÁREA', 'FECHA', 'HORA']];
-        
-        // Configuración de tema personalizado
-        const tableConfig = {
-            head: headers,
-            body: rows,
-            startY: 30,
-            margin: { top: 20 },
-            styles: styles,
-            headStyles: {
-                fillColor: [94, 114, 228], // Azul corporativo
-                textColor: [255, 255, 255],
-                fontSize: 11,
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            bodyStyles: {
-                textColor: [52, 71, 103], // Color de texto corporativo
-                fontSize: 10,
-                halign: 'left'
-            },
-            alternateRowStyles: {
-                fillColor: [248, 249, 254] // Color de fila alternada
-            },
-            columnStyles: {
-                0: { cellWidth: 35 }, // Nombre
-                1: { cellWidth: 35 }, // Apellido
-                2: { cellWidth: 40 }, // Área
-                3: { cellWidth: 40 }, // Fecha
-                4: { cellWidth: 30 }  // Hora
-            },
-            theme: 'grid'
-        };
-
-        // Agregar título
+        // Agregar título personalizado
         doc.setFontSize(16);
         doc.setTextColor(52, 71, 103);
         doc.setFont('helvetica', 'bold');
-        doc.text('Registro de Personal', 14, 20);
+        doc.text(titulo || 'Registro de Personal', 14, 15);
 
         // Agregar fecha de generación
         doc.setFontSize(10);
@@ -193,19 +184,18 @@ function exportarPDF() {
         doc.text(`Generado el: ${fecha}`, 14, 26);
 
         // Agregar la tabla al PDF
-        doc.autoTable(tableConfig);
-
-        // Agregar pie de página
-        const pageCount = doc.internal.getNumberOfPages();
-        for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(103, 116, 142);
-            doc.text(`Página ${i} de ${pageCount}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
-        }
+        doc.autoTable({
+            head: [['Nombre', 'Apellido', 'Área', 'Fecha', 'Hora']],
+            body: rows,
+            startY: 30,
+            margin: { top: 20 },
+            styles: { fontSize: 10 },
+            headStyles: { fillColor: [94, 114, 228] }
+        });
 
         // Descargar el PDF
-        doc.save('registros_personal.pdf');
+        const nombreArchivo = titulo.toLowerCase().replace(/ /g, '_') + '.pdf';
+        doc.save(nombreArchivo);
         
         // Notificación de éxito
         toastr.success('El archivo PDF ha sido generado correctamente', 'Exportación Exitosa');

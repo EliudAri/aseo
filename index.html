@@ -100,5 +100,27 @@
             </div>
         </div>
     </div>
+
+    <!-- Agregar este nuevo modal al final del body, junto al modal de eliminación -->
+    <div class="modal fade" id="pdfTitleModal" tabindex="-1" aria-labelledby="pdfTitleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title" id="pdfTitleModalLabel">Título del PDF</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="pdfTitle" class="form-label">Ingrese el título para el documento:</label>
+                        <input type="text" class="form-control" id="pdfTitle" placeholder="Ej: Registro de Personal">
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmPdfExport">Exportar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
